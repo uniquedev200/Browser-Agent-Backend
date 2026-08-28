@@ -10,6 +10,37 @@ from backend.schemas.browser_state import BrowserState
 logger = logging.getLogger("browserauto.actions")
 
 
+def _fuzzy_match_target(target: str, elements: list) -> str | None:
+    target_lower = target.lower().replace("_", "").replace("-", "").replace(" ", "")
+    if not target_lower:
+        return None
+    best_match = None
+    best_score = 0
+    for e in elements:
+        eid = e.element_id.lower().replace("_", "").replace("-", "").replace(" ", "")
+        label = (e.label or "").lower().replace("_", "").replace("-", "").replace(" ", "")
+        text = (e.text or "").lower().replace("_", "").replace("-", "").replace(" ", "")
+        if not eid and not label and not text:
+            continue
+        if target_lower == eid:
+            return e.element_id
+        if label and target_lower == label:
+            return e.element_id
+        if text and target_lower == text:
+            return e.element_id
+        score = 0
+        if label and (target_lower in label or label in target_lower):
+            score = len(set(target_lower) & set(label))
+        elif text and (target_lower in text or text in target_lower):
+            score = len(set(target_lower) & set(text))
+        elif target_lower in eid or eid in target_lower:
+            score = len(set(target_lower) & set(eid)) * 0.5
+        if score > best_score:
+            best_score = score
+            best_match = e.element_id
+    return best_match if best_score > 2 else None
+
+
 class ActionValidator:
     def validate(
         self,
@@ -23,6 +54,13 @@ class ActionValidator:
         visible_ids = {e.element_id for e in browser_state.elements if e.enabled}
 
         for action in actions:
+            target = action.get("target", "")
+            if target and target not in element_ids:
+                matched = _fuzzy_match_target(target, browser_state.elements)
+                if matched:
+                    action["target"] = matched
+                    logger.info("Fuzzy matched target '%s' -> '%s'", target, matched)
+
             action_errors = self._validate_single(action, element_ids, visible_ids)
             if action_errors:
                 errors.extend(action_errors)

@@ -183,6 +183,7 @@ class QwenVLMEngine:
 
         elapsed = time.perf_counter() - start
         logger.debug("VLM inference took %.2fs", elapsed)
+        logger.info("VLM raw output: %s", output_text[:800])
 
         return self._parse_json_output(output_text)
 
@@ -192,18 +193,21 @@ class QwenVLMEngine:
         text = re.sub(r"```[\w]*", "", text)
         text = text.strip()
 
-        json_match = re.search(r"\{[\s\S]*", text)
-        if not json_match:
-            logger.warning("No JSON found in VLM output, returning fallback")
-            return {
-                "status": "blocked",
-                "phase": "",
-                "actions": [],
-                "checkpoint": False,
-                "reason": "VLM did not return valid JSON",
-            }
-
-        json_str = json_match.group(0)
+        json_match = re.search(r"\[[\s\S]*\]", text)
+        if json_match:
+            json_str = json_match.group(0)
+        else:
+            json_match = re.search(r"\{[\s\S]*", text)
+            if not json_match:
+                logger.warning("No JSON found in VLM output, returning fallback")
+                return {
+                    "status": "blocked",
+                    "phase": "",
+                    "actions": [],
+                    "checkpoint": False,
+                    "reason": "VLM did not return valid JSON",
+                }
+            json_str = json_match.group(0)
 
         try:
             parsed = json.loads(json_str)
@@ -227,6 +231,15 @@ class QwenVLMEngine:
                         "reason": "VLM returned malformed JSON",
                     }
 
+        if isinstance(parsed, list):
+            parsed = {
+                "status": "continue",
+                "phase": "fill",
+                "actions": parsed,
+                "checkpoint": True,
+                "reason": "filling form",
+            }
+
         required_keys = {"status", "actions"}
         if not required_keys.issubset(parsed.keys()):
             parsed.setdefault("status", "blocked")
@@ -249,6 +262,10 @@ class QwenVLMEngine:
                         })
                         i += 1
             parsed["actions"] = actions
+
+        for action in parsed.get("actions", []):
+            if action.get("type") in ("check", "uncheck"):
+                action.pop("value", None)
 
         return parsed
 
