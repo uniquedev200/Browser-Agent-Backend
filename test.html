@@ -1,0 +1,227 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Software Engineer Internship — Privacy Test</title>
+
+    <style>
+        body {
+            margin: 0;
+            background: #f3f4f6;
+            font-family: Arial, sans-serif;
+            color: #111827;
+        }
+
+        .page {
+            min-height: 100vh;
+            padding: 40px;
+        }
+
+        .card {
+            width: 760px;
+            margin: auto;
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 28px;
+        }
+
+        .field {
+            margin: 18px 0;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"] {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .actions {
+            margin-top: 28px;
+            display: flex;
+            gap: 12px;
+        }
+
+        button {
+            padding: 12px 18px;
+            border: 0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        .primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .secondary {
+            background: #e5e7eb;
+            color: #111827;
+        }
+
+        .privacy {
+            margin-top: 24px;
+            padding: 14px 16px;
+            background: #eff6ff;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+<main class="page">
+
+    <section class="card" aria-labelledby="title">
+
+        <h1 id="title">
+            Software Engineer Internship
+        </h1>
+
+        <p id="subtitle" class="subtitle">
+            Complete your application to continue.
+        </p>
+
+        <form id="application-form">
+
+            <div class="field">
+                <label for="name">
+                    Full Name
+                </label>
+
+                <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    value="<PERSON>"
+                    autocomplete="name"
+                >
+            </div>
+
+            <div class="field">
+                <label for="email">
+                    Email Address
+                </label>
+
+                <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value="<EMAIL>"
+                    autocomplete="email"
+                >
+            </div>
+
+            <div class="field">
+                <label for="phone">
+                    Phone Number
+                </label>
+
+                <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    value="<PHONE>"
+                    autocomplete="tel"
+                >
+            </div>
+
+            <div class="field">
+                <label for="address">
+                    Address
+                </label>
+
+                <input
+                    id="address"
+                    name="address"
+                    type="text"
+                    value="<ADDRESS>"
+                    autocomplete="street-address"
+                >
+            </div>
+
+            <div class="field">
+
+                <label for="terms">
+                    <input
+                        id="terms"
+                        name="terms"
+                        type="checkbox"
+                        aria-describedby="terms-help"
+                    >
+
+                    I agree to the terms and conditions
+                </label>
+
+                <div
+                    id="terms-help"
+                    class="subtitle"
+                    style="margin: 6px 0 0 0"
+                >
+                    Required before continuing.
+                </div>
+
+            </div>
+
+            <div class="actions">
+
+                <button
+                    id="save"
+                    type="button"
+                    class="secondary"
+                >
+                    Save Draft
+                </button>
+
+                <button
+                    id="next"
+                    type="submit"
+                    class="primary"
+                >
+                    Next
+                </button>
+
+            </div>
+
+        </form>
+
+        <div
+            id="privacy-status"
+            class="privacy"
+            role="status"
+        >
+            Privacy mode active: personal values are replaced with semantic placeholders.
+        </div>
+
+    </section>
+
+</main>
+
+</body>
+</html>
+```
