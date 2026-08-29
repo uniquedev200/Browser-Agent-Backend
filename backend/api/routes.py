@@ -26,6 +26,7 @@ from backend.utils.hashing import hash_browser_state
 from backend.utils.logging import log_request, setup_logging
 from backend.validation.browser_state_validator import BrowserStateValidator
 from backend.vlm.qwen_engine import QwenVLMEngine
+from backend.vlm.llamacpp_engine import LlamaCppEngine
 from backend.workflow.workflow_manager import WorkflowManager
 
 logger = logging.getLogger("browserauto.api")
@@ -36,7 +37,7 @@ _session_manager: SessionManager | None = None
 _workflow_manager: WorkflowManager | None = None
 _state_validator: BrowserStateValidator | None = None
 _prompt_builder: PromptBuilder | None = None
-_vlm_engine: QwenVLMEngine | None = None
+_vlm_engine: QwenVLMEngine | LlamaCppEngine | None = None
 _action_validator: ActionValidator | None = None
 _timings_enabled: bool = False
 
@@ -46,7 +47,7 @@ def init_routes(
     workflow_manager: WorkflowManager,
     state_validator: BrowserStateValidator,
     prompt_builder: PromptBuilder,
-    vlm_engine: QwenVLMEngine,
+    vlm_engine: QwenVLMEngine | LlamaCppEngine,
     action_validator: ActionValidator,
     debug_timings: bool = False,
 ) -> None:
@@ -207,13 +208,18 @@ async def infer(req: InferRequest) -> InferResponse:
     image = None
     if req.screenshot and req.screenshot.data:
         try:
-            image = _vlm_engine.decode_image(req.screenshot.data, req.screenshot.mime_type)
+            decoded = _vlm_engine.decode_image(req.screenshot.data, req.screenshot.mime_type)
+            image = decoded
         except Exception as e:
             logger.warning("Failed to decode screenshot: %s", e)
 
     t4 = time.perf_counter()
     try:
-        vlm_output = _vlm_engine.infer(image, prompt)
+        import asyncio
+        if isinstance(_vlm_engine, LlamaCppEngine):
+            vlm_output = await _vlm_engine.infer(image, prompt)
+        else:
+            vlm_output = _vlm_engine.infer(image, prompt)
     except Exception as e:
         logger.error("VLM inference failed: %s", e)
         return InferResponse(

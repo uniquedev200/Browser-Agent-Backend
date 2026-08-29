@@ -17,6 +17,9 @@ DATABASE_URL = os.getenv("DATABASE_URL", "")
 STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "memory")
 DEBUG_TIMINGS = os.getenv("DEBUG_TIMINGS", "false").lower() == "true"
 
+VLM_BACKEND = os.getenv("VLM_BACKEND", "llamacpp")
+LLAMACPP_URL = os.getenv("LLAMACPP_URL", "http://127.0.0.1:8081")
+
 MAX_SCREENSHOT_BYTES = 10 * 1024 * 1024
 MAX_IMAGE_WIDTH = 320
 MAX_IMAGE_HEIGHT = 320

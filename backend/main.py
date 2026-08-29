@@ -15,8 +15,10 @@ from backend.config.settings import (
     DEBUG_TIMINGS,
     HOST,
     LOG_LEVEL,
+    LLAMACPP_URL,
     PORT,
     STORAGE_BACKEND,
+    VLM_BACKEND,
 )
 from backend.prompts.prompt_builder import PromptBuilder
 from backend.session.session_manager import SessionManager
@@ -24,11 +26,15 @@ from backend.storage.memory_store import MemorySessionStore
 from backend.utils.logging import setup_logging
 from backend.validation.browser_state_validator import BrowserStateValidator
 from backend.vlm.qwen_engine import QwenVLMEngine
+from backend.vlm.llamacpp_engine import LlamaCppEngine
 from backend.workflow.workflow_manager import WorkflowManager
 
 logger = setup_logging(LOG_LEVEL)
 
-vlm_engine = QwenVLMEngine()
+if VLM_BACKEND == "llamacpp":
+    vlm_engine = LlamaCppEngine()
+else:
+    vlm_engine = QwenVLMEngine()
 
 
 @asynccontextmanager
@@ -58,7 +64,10 @@ async def lifespan(app: FastAPI):
     action_validator = ActionValidator()
 
     try:
-        vlm_engine.load()
+        if isinstance(vlm_engine, LlamaCppEngine):
+            await vlm_engine.load()
+        else:
+            vlm_engine.load()
     except Exception as e:
         logger.error("CRITICAL: Failed to load VLM model: %s", e)
         logger.error("The server will start but inference will fail.")
@@ -79,6 +88,8 @@ async def lifespan(app: FastAPI):
 
     if pg_store:
         await pg_store.close()
+    if isinstance(vlm_engine, LlamaCppEngine):
+        await vlm_engine.close()
     logger.info("Backend shutdown complete")
 
 
