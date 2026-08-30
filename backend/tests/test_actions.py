@@ -136,14 +136,15 @@ def test_batch_valid_actions(validator):
     assert len(errors) == 0
 
 
-def test_unknown_placeholder_passes(validator):
+def test_unknown_placeholder_rejected(validator):
     state = _state([
         {"element_id": "el_1", "role": "textbox", "label": "Alt Email", "enabled": True},
     ])
     actions = [{"action_id": "a1", "type": "fill", "target": "el_1", "value": "<ALT_EMAIL>"}]
     valid, errors = validator.validate(actions, state)
-    assert len(valid) == 1
-    assert len(errors) == 0
+    assert len(valid) == 0
+    assert len(errors) == 1
+    assert "not a valid semantic placeholder" in errors[0]
 
 
 def test_invalid_model_action_rejection(validator):

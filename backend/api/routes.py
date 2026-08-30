@@ -205,6 +205,8 @@ async def infer(req: InferRequest) -> InferResponse:
     )
     timings["prompt_ms"] = (time.perf_counter() - t3) * 1000
 
+    logger.info("VLM prompt:\n%s", prompt)
+
     image = None
     if req.screenshot and req.screenshot.data:
         try:
@@ -258,6 +260,8 @@ async def infer(req: InferRequest) -> InferResponse:
     )
     timings["validation_output_ms"] = (time.perf_counter() - t5) * 1000
 
+    timings["total_ms"] = (time.perf_counter() - total_start) * 1000
+
     if validation_errors:
         logger.warning(
             "Action validation errors for session %s: %s",
@@ -281,8 +285,6 @@ async def infer(req: InferRequest) -> InferResponse:
     _workflow_manager.update_summary(session, vlm_phase, vlm_reason, valid_actions)
     session.last_action_batch = valid_actions
     await _session_manager.save(session)
-
-    timings["total_ms"] = (time.perf_counter() - total_start) * 1000
 
     log_request(
         logger,

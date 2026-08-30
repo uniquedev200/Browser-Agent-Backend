@@ -209,7 +209,11 @@ class LlamaCppEngine:
                         i += 1
             parsed["actions"] = actions
 
-        for action in parsed.get("actions", []):
+        for i, action in enumerate(parsed.get("actions", []), 1):
+            if "action" in action and "type" not in action:
+                action["type"] = action.pop("action")
+            if "action_id" not in action:
+                action["action_id"] = f"a{i}"
             if action.get("type") in ("check", "uncheck"):
                 action.pop("value", None)
 

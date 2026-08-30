@@ -38,7 +38,10 @@ def _fuzzy_match_target(target: str, elements: list) -> str | None:
         if score > best_score:
             best_score = score
             best_match = e.element_id
-    return best_match if best_score > 2 else None
+            logger.debug("Fuzzy candidate: '%s' vs '%s' (eid=%s) score=%.1f", target, e.label or e.text, e.element_id, score)
+    if best_match and best_score >= 1:
+        logger.info("Fuzzy matched target '%s' -> '%s' (score=%.1f)", target, best_match, best_score)
+    return best_match if best_score >= 1 else None
 
 
 class ActionValidator:

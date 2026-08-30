@@ -31,6 +31,8 @@ from backend.workflow.workflow_manager import WorkflowManager
 
 logger = setup_logging(LOG_LEVEL)
 
+logger.info("VLM_BACKEND=%s, LLAMACPP_URL=%s", VLM_BACKEND, LLAMACPP_URL)
+
 if VLM_BACKEND == "llamacpp":
     vlm_engine = LlamaCppEngine()
 else:
