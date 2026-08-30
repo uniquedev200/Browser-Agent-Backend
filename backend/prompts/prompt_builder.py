@@ -21,30 +21,53 @@ class PromptBuilder:
         validation_results: list[dict[str, Any]] | None = None,
         execution_results: list[dict[str, Any]] | None = None,
     ) -> str:
-        elements = []
-        for e in browser_state.elements:
-            if e.role in ("textbox", "button", "checkbox", "combobox"):
-                if e.role == "checkbox":
-                    state = "checked" if e.checked else "unchecked"
-                    label = e.label or e.text or e.element_id
-                    elements.append(f"- {e.element_id}: checkbox \"{label}\" ({state})")
-                else:
-                    val = e.value if e.value else "empty"
-                    label = e.label or e.text or e.element_id
-                    elements.append(f"- {e.element_id}: {e.role} \"{label}\" ({val})")
+        pending_elements = []
+        completed_elements = []
 
-        example_actions = self._build_example(elements)
+        for e in browser_state.elements:
+            if e.role not in ("textbox", "button", "checkbox", "combobox"):
+                continue
+
+            label = e.label or e.text or e.element_id
+            needs_action = False
+
+            if e.role == "textbox":
+                if not e.value or e.value.startswith("<") or e.value == "empty":
+                    needs_action = True
+                state = e.value if e.value and e.value != "empty" else "empty"
+            elif e.role == "checkbox":
+                if not e.checked:
+                    needs_action = True
+                state = "checked" if e.checked else "unchecked"
+            elif e.role in ("button", "combobox"):
+                needs_action = True
+                state = e.value if e.value else "empty"
+
+            line = f"- {e.element_id}: {e.role} \"{label}\" ({state})"
+            if needs_action:
+                pending_elements.append(line)
+            else:
+                completed_elements.append(line)
+
+        all_done = len(pending_elements) == 0
+
+        if all_done:
+            return self._build_done_response(task, completed_elements)
+
+        example_actions = self._build_example(pending_elements)
 
         parts: list[str] = []
         parts.append(
             "You are a form-filling agent. Return ONLY compact JSON.\n\n"
             "ACTION TYPES:\n"
-            "- \"fill\" for textboxes (use <PERSON>, <EMAIL>, <PHONE>, <ADDRESS> as value)\n"
+            "- \"fill\" for empty textboxes (use <PERSON>, <EMAIL>, <PHONE>, <ADDRESS> as value)\n"
             "- \"check\" for unchecked checkboxes (no value needed)\n"
             "- \"click\" for buttons (no value needed)\n\n"
             "RULES:\n"
             "- The \"target\" field MUST be the element_id from the list below\n"
             "- The \"value\" field MUST be a placeholder like <EMAIL>, not real data\n"
+            "- If \"Pending elements\" is NOT empty, you MUST generate actions for ALL pending elements\n"
+            "- Only return {\"status\":\"done\"} when \"Pending elements\" is EMPTY\n"
             "- Return ALL actions in a SINGLE array\n"
         )
 
@@ -57,9 +80,13 @@ class PromptBuilder:
         if previous_actions:
             parts.append(f"Prev: {json.dumps(previous_actions)}")
 
-        if elements:
-            parts.append("\nElements:")
-            parts.extend(elements)
+        if pending_elements:
+            parts.append("\nPending elements (need action):")
+            parts.extend(pending_elements)
+
+        if completed_elements:
+            parts.append("\nCompleted elements:")
+            parts.extend(completed_elements)
 
         if example_actions:
             parts.append(f"\nExample output:")
@@ -67,6 +94,23 @@ class PromptBuilder:
 
         parts.append("")
 
+        return "\n".join(parts)
+
+    def _build_done_response(self, task: str, completed: list[str]) -> str:
+        parts: list[str] = []
+        parts.append(
+            "You are a form-filling agent. Return ONLY compact JSON.\n\n"
+            "All form elements are already filled and checked.\n"
+            "Return: {\"status\":\"done\",\"phase\":\"done\",\"actions\":[],\"checkpoint\":true,\"reason\":\"All fields filled and submitted\"}\n"
+        )
+        if task:
+            parts.append(f"Task: {task}")
+
+        if completed:
+            parts.append("\nAll elements are completed:")
+            parts.extend(completed)
+
+        parts.append("")
         return "\n".join(parts)
 
     def _build_example(self, elements: list[str]) -> str:
