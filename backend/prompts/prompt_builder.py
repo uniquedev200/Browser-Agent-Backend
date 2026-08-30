@@ -72,7 +72,7 @@ class PromptBuilder:
     def _build_example(self, elements: list[str]) -> str:
         textboxes = []
         checkbox = None
-        button = None
+        buttons = []
 
         for line in elements:
             if "textbox" in line:
@@ -81,9 +81,9 @@ class PromptBuilder:
             elif "checkbox" in line and checkbox is None:
                 eid = line.split(":")[0].strip("- ")
                 checkbox = eid
-            elif "button" in line and button is None:
+            elif "button" in line:
                 eid = line.split(":")[0].strip("- ")
-                button = eid
+                buttons.append(eid)
 
         actions = []
         i = 1
@@ -97,7 +97,8 @@ class PromptBuilder:
             actions.append({"action_id": f"a{i}", "type": "check", "target": checkbox})
             i += 1
 
-        if button:
-            actions.append({"action_id": f"a{i}", "type": "click", "target": button})
+        for btn in buttons:
+            actions.append({"action_id": f"a{i}", "type": "click", "target": btn})
+            i += 1
 
         return json.dumps({"status": "continue", "phase": "fill", "actions": actions, "checkpoint": True, "reason": "filling form"}, separators=(",", ":"))
