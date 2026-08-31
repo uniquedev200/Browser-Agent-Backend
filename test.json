@@ -1,0 +1,381 @@
+{
+  "sanitized_dom": {
+    "page": {
+      "title": "Software Engineer Internship — Privacy Test",
+      "url": "https://example.local/apply",
+      "viewport": {
+        "width": 900,
+        "height": 1100
+      },
+      "scroll": {
+        "x": 0,
+        "y": 0
+      }
+    },
+
+    "elements": [
+      {
+        "element_id": "title",
+        "tag": "h1",
+        "text": "Software Engineer Internship",
+        "bbox": [70, 72, 760, 34],
+        "visible": true,
+        "enabled": true
+      },
+
+      {
+        "element_id": "subtitle",
+        "tag": "p",
+        "text": "Complete your application to continue.",
+        "bbox": [70, 115, 380, 20],
+        "visible": true,
+        "enabled": true
+      },
+
+      {
+        "element_id": "name",
+        "tag": "input",
+        "type": "text",
+        "label": "Full Name",
+        "value": "<PERSON>",
+        "autocomplete": "name",
+        "bbox": [70, 184, 760, 45],
+        "visible": true,
+        "enabled": true
+      },
+
+      {
+        "element_id": "email",
+        "tag": "input",
+        "type": "email",
+        "label": "Email Address",
+        "value": "<EMAIL>",
+        "autocomplete": "email",
+        "bbox": [70, 268, 760, 45],
+        "visible": true,
+        "enabled": true
+      },
+
+      {
+        "element_id": "phone",
+        "tag": "input",
+        "type": "tel",
+        "label": "Phone Number",
+        "value": "<PHONE>",
+        "autocomplete": "tel",
+        "bbox": [70, 352, 760, 45],
+        "visible": true,
+        "enabled": true
+      },
+
+      {
+        "element_id": "address",
+        "tag": "input",
+        "type": "text",
+        "label": "Address",
+        "value": "<ADDRESS>",
+        "autocomplete": "street-address",
+        "bbox": [70, 436, 760, 45],
+        "visible": true,
+        "enabled": true
+      },
+
+      {
+        "element_id": "terms",
+        "tag": "input",
+        "type": "checkbox",
+        "label": "I agree to the terms and conditions",
+        "checked": false,
+        "bbox": [70, 520, 18, 18],
+        "visible": true,
+        "enabled": true
+      },
+
+      {
+        "element_id": "terms-help",
+        "tag": "div",
+        "text": "Required before continuing.",
+        "bbox": [70, 546, 180, 18],
+        "visible": true,
+        "enabled": true
+      },
+
+      {
+        "element_id": "save",
+        "tag": "button",
+        "type": "button",
+        "text": "Save Draft",
+        "bbox": [70, 592, 120, 44],
+        "visible": true,
+        "enabled": true
+      },
+
+      {
+        "element_id": "next",
+        "tag": "button",
+        "type": "submit",
+        "text": "Next",
+        "bbox": [204, 592, 96, 44],
+        "visible": true,
+        "enabled": true
+      },
+
+      {
+        "element_id": "privacy-status",
+        "tag": "div",
+        "role": "status",
+        "text": "Privacy mode active: personal values are replaced with semantic placeholders.",
+        "bbox": [70, 660, 760, 52],
+        "visible": true,
+        "enabled": true
+      }
+    ]
+  },
+
+  "sanitized_accessibility_tree": {
+    "root": {
+      "role": "document",
+      "name": "Software Engineer Internship — Privacy Test"
+    },
+
+    "nodes": [
+      {
+        "node_id": "ax1",
+        "role": "heading",
+        "name": "Software Engineer Internship",
+        "level": 1,
+        "element_id": "title"
+      },
+
+      {
+        "node_id": "ax2",
+        "role": "paragraph",
+        "name": "Complete your application to continue.",
+        "element_id": "subtitle"
+      },
+
+      {
+        "node_id": "ax3",
+        "role": "textbox",
+        "name": "Full Name",
+        "value": "<PERSON>",
+        "required": false,
+        "disabled": false,
+        "focused": false,
+        "element_id": "name"
+      },
+
+      {
+        "node_id": "ax4",
+        "role": "textbox",
+        "name": "Email Address",
+        "value": "<EMAIL>",
+        "required": false,
+        "disabled": false,
+        "focused": false,
+        "element_id": "email"
+      },
+
+      {
+        "node_id": "ax5",
+        "role": "textbox",
+        "name": "Phone Number",
+        "value": "<PHONE>",
+        "required": false,
+        "disabled": false,
+        "focused": false,
+        "element_id": "phone"
+      },
+
+      {
+        "node_id": "ax6",
+        "role": "textbox",
+        "name": "Address",
+        "value": "<ADDRESS>",
+        "required": false,
+        "disabled": false,
+        "focused": false,
+        "element_id": "address"
+      },
+
+      {
+        "node_id": "ax7",
+        "role": "checkbox",
+        "name": "I agree to the terms and conditions",
+        "checked": false,
+        "disabled": false,
+        "focused": false,
+        "element_id": "terms"
+      },
+
+      {
+        "node_id": "ax8",
+        "role": "button",
+        "name": "Save Draft",
+        "disabled": false,
+        "focused": false,
+        "element_id": "save"
+      },
+
+      {
+        "node_id": "ax9",
+        "role": "button",
+        "name": "Next",
+        "disabled": false,
+        "focused": false,
+        "element_id": "next"
+      },
+
+      {
+        "node_id": "ax10",
+        "role": "status",
+        "name": "Privacy mode active: personal values are replaced with semantic placeholders.",
+        "element_id": "privacy-status"
+      }
+    ]
+  },
+
+  "browser_state": {
+    "schema_version": "1.0",
+
+    "page": {
+      "title": "Software Engineer Internship — Privacy Test",
+      "url": "https://example.local/apply",
+      "viewport": {
+        "width": 900,
+        "height": 1100
+      },
+      "scroll": {
+        "x": 0,
+        "y": 0
+      }
+    },
+
+    "elements": [
+      {
+        "element_id": "title",
+        "role": "heading",
+        "text": "Software Engineer Internship",
+        "bbox": [70, 72, 760, 34],
+        "visible": true,
+        "enabled": true,
+        "level": 1
+      },
+
+      {
+        "element_id": "subtitle",
+        "role": "paragraph",
+        "text": "Complete your application to continue.",
+        "bbox": [70, 115, 380, 20],
+        "visible": true,
+        "enabled": true
+      },
+
+      {
+        "element_id": "name",
+        "role": "textbox",
+        "type": "text",
+        "label": "Full Name",
+        "value": "<PERSON>",
+        "bbox": [70, 184, 760, 45],
+        "visible": true,
+        "enabled": true,
+        "focused": false
+      },
+
+      {
+        "element_id": "email",
+        "role": "textbox",
+        "type": "email",
+        "label": "Email Address",
+        "value": "<EMAIL>",
+        "bbox": [70, 268, 760, 45],
+        "visible": true,
+        "enabled": true,
+        "focused": false
+      },
+
+      {
+        "element_id": "phone",
+        "role": "textbox",
+        "type": "tel",
+        "label": "Phone Number",
+        "value": "<PHONE>",
+        "bbox": [70, 352, 760, 45],
+        "visible": true,
+        "enabled": true,
+        "focused": false
+      },
+
+      {
+        "element_id": "address",
+        "role": "textbox",
+        "type": "text",
+        "label": "Address",
+        "value": "<ADDRESS>",
+        "bbox": [70, 436, 760, 45],
+        "visible": true,
+        "enabled": true,
+        "focused": false
+      },
+
+      {
+        "element_id": "terms",
+        "role": "checkbox",
+        "label": "I agree to the terms and conditions",
+        "checked": false,
+        "bbox": [70, 520, 18, 18],
+        "visible": true,
+        "enabled": true,
+        "focused": false
+      },
+
+      {
+        "element_id": "save",
+        "role": "button",
+        "text": "Save Draft",
+        "bbox": [70, 592, 120, 44],
+        "visible": true,
+        "enabled": true
+      },
+
+      {
+        "element_id": "next",
+        "role": "button",
+        "text": "Next",
+        "bbox": [204, 592, 96, 44],
+        "visible": true,
+        "enabled": true
+      },
+
+      {
+        "element_id": "privacy-status",
+        "role": "status",
+        "text": "Privacy mode active: personal values are replaced with semantic placeholders.",
+        "bbox": [70, 660, 760, 52],
+        "visible": true,
+        "enabled": true
+      }
+    ],
+
+    "redactions": [
+      {
+        "element_id": "name",
+        "type": "PERSON"
+      },
+      {
+        "element_id": "email",
+        "type": "EMAIL"
+      },
+      {
+        "element_id": "phone",
+        "type": "PHONE"
+      },
+      {
+        "element_id": "address",
+        "type": "ADDRESS"
+      }
+    ]
+  }
+}
+

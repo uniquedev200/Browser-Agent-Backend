@@ -14,7 +14,8 @@ build/
 *.png
 *.jpg
 *.jpeg
-test.json
+!test.png
+!test.json
 scripts/test_*.py
 server_log.txt
 server_out.log
