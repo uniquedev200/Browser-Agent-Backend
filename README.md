@@ -1,6 +1,6 @@
 # BrowserAuto Backend
 
-Server-side backend for a privacy-preserving browser automation agent. The backend receives sanitized browser state and screenshots, reasons over them using a local Qwen2.5-VL-3B model, and returns structured browser action plans. **No raw PII ever reaches the server.**
+Server-side backend for a privacy-preserving browser automation agent. The backend receives sanitized browser state and screenshots, reasons over them using a local VLM, and returns structured browser action plans. **No raw PII ever reaches the server.**
 
 ## Architecture
 
@@ -42,8 +42,8 @@ Server-side backend for a privacy-preserving browser automation agent. The backe
                            |
                            v
                  +--------------------+
-                 | Qwen2.5-VL-3B     |
-                 | Local Open-Weight  |
+                 | VLM Engine         |
+                 | (llama.cpp / HF)   |
                  +---------+----------+
                            |
                            v
@@ -69,20 +69,22 @@ Server-side backend for a privacy-preserving browser automation agent. The backe
 
 ## Tech Stack
 
-- Python 3.11
-- FastAPI + Uvicorn
-- Pydantic v2
-- PyTorch + Transformers (Qwen2.5-VL)
-- BitsAndBytes (4-bit NF4 quantization)
-- asyncpg (Supabase PostgreSQL direct connection)
-- PIL/Pillow for image processing
+- **Runtime**: Python 3.13, FastAPI, Pydantic v2, Uvicorn
+- **VLM (primary)**: llama.cpp + GGUF model via OpenAI-compatible API
+  - Model: `Qwen2.5-VL-3B-Instruct` (Q4_K_M quantized, ~2.3GB)
+  - Projector: `mmproj-Qwen2.5-VL-3B-Instruct` (Q8_0, ~554MB)
+  - Server: llama-server from Docker Desktop (`C:\Users\suraj\.docker\bin\inference\llama-server.exe`)
+  - Backend: Vulkan (RTX 3050 6GB)
+- **VLM (fallback)**: HuggingFace Transformers + BitsAndBytes (NF4 quantization)
+- **Database**: Supabase PostgreSQL via asyncpg (direct connection)
+- **GPU**: NVIDIA RTX 3050 6GB Laptop, driver 581.86
 
 ## Installation
 
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/uniquedev200/Browser-Agent-Backend.git
 cd browserauto_backend
 ```
 
@@ -106,28 +108,51 @@ pip install -r requirements.txt
 copy .env.example .env
 ```
 
-Edit `.env` with your settings. Key variables:
+Edit `.env` with your settings:
 
 ```text
-MODEL_PATH=C:\Users\suraj\Qwen2.5-VL-3B
+# VLM Backend: "llamacpp" (default) or "hf"
+VLM_BACKEND=llamacpp
+
+# llama.cpp settings
+LLAMACPP_URL=http://127.0.0.1:8081
+GGUF_MODEL_PATH=C:\Models\Qwen2.5-VL-3B-GGUF\Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf
+MMProj_PATH=C:\Models\Qwen2.5-VL-3B-GGUF\mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf
+
+# HuggingFace fallback settings
+MODEL_PATH=C:\Users\suraj\Qwen2-VL-2B
+
+# Server settings
 HOST=127.0.0.1
 PORT=8000
 MAX_NEW_TOKENS=512
+MAX_IMAGE_WIDTH=640
+MAX_IMAGE_HEIGHT=640
+
+# Storage
+STORAGE_BACKEND=pg
+DATABASE_URL=postgresql://postgres.tanyuidzfgeqnghwzywt:<YOUR-PASSWORD>@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+
+# Other
 MAX_RETRIES=3
 SESSION_TTL_SECONDS=3600
 LOG_LEVEL=INFO
-STORAGE_BACKEND=memory
 DEBUG_TIMINGS=true
 ```
 
-For PostgreSQL storage, set:
+### 5. Start llama-server (if using llama.cpp backend)
 
-```text
-DATABASE_URL=postgresql://postgres.tanyuidzfgeqnghwzywt:<YOUR-PASSWORD>@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
-STORAGE_BACKEND=pg
+```bash
+# From Docker Desktop's bundled llama.cpp
+C:\Users\suraj\.docker\bin\inference\llama-server.exe ^
+  --model C:\Models\Qwen2.5-VL-3B-GGUF\Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf ^
+  --mmproj C:\Models\Qwen2.5-VL-3B-GGUF\mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf ^
+  --host 127.0.0.1 --port 8081 -ngl 99 -c 4096
 ```
 
-### 5. Start the server
+Wait ~15 seconds for model to load.
+
+### 6. Start the backend
 
 ```bash
 python -m backend.main
@@ -135,13 +160,24 @@ python -m backend.main
 
 The server starts on `http://127.0.0.1:8000`.
 
-### 6. Verify
+### 7. Verify
 
 ```bash
 curl http://127.0.0.1:8000/health
 ```
 
 Response: `{"status": "ok"}`
+
+## Performance
+
+| Metric | llama.cpp (Q4_K_M) | HuggingFace (NF4) |
+|--------|--------------------|--------------------|
+| VLM inference | **3.2-4.3s** | ~15s |
+| Total latency | **4.6-5.6s** | ~17s |
+| Model size | ~2.3GB | ~2.3GB |
+| VRAM usage | ~3GB | ~3.5GB |
+| GPU backend | Vulkan | CUDA |
+| Dependencies | llama-server only | torch + transformers + bitsandbytes |
 
 ## API Endpoints
 
@@ -247,17 +283,18 @@ Response:
       "type": "fill",
       "target": "email_1",
       "value": "<EMAIL>"
+    },
+    {
+      "action_id": "a3",
+      "type": "click",
+      "target": "submit_1"
     }
   ],
   "checkpoint": true,
-  "reason": "Both visible registration fields can be filled safely.",
+  "reason": "All visible form fields can be filled and submitted",
   "timings": {
-    "session_ms": 2.1,
-    "validation_ms": 0.5,
-    "prompt_ms": 0.3,
-    "vlm_ms": 812.4,
-    "validation_output_ms": 0.2,
-    "total_ms": 815.5
+    "vlm_ms": 3200.0,
+    "total_ms": 3500.0
   }
 }
 ```
@@ -278,8 +315,8 @@ class PageMetadata:
 
 class ElementState:
     element_id: str          # required
-    role: str                # textbox, button, combobox, etc.
-    type: str                # email, text, tel, checkbox, etc.
+    role: str                # textbox, button, combobox, checkbox
+    type: str                # email, text, tel, etc.
     tag: str                 # optional
     text: str                # visible text
     label: str               # label
@@ -318,19 +355,30 @@ Supported action types: `click`, `fill`, `select`, `check`, `uncheck`, `scroll`,
 3. Server validates previous execution (if any)
 4. Server updates workflow state
 5. Server builds prompt from session state + browser state
-6. Qwen2.5-VL generates structured action JSON
+6. VLM generates structured action JSON
 7. Action Validator filters invalid actions
 8. Server returns valid actions to client
 9. Client executes actions locally, captures new state
 10. Client sends next request with same `session_id`
 11. Repeat until status is `done`
 
+## Smart Prompt System
+
+The prompt builder dynamically adapts to the current state:
+
+- **Pending elements**: Only shows elements that need action (empty textboxes, unchecked checkboxes)
+- **Completed elements**: Shows already-filled elements separately
+- **Dynamic example**: Generates a concrete example using actual element_ids
+- **Done detection**: Returns `status: "done"` when all elements are completed
+
+This ensures the VLM only generates actions for elements that actually need them.
+
 ## Multi-user Architecture
 
-One Qwen model instance serves multiple browser sessions concurrently. Session state is isolated by `session_id`. No mutable per-user state is stored in process-global variables. The PostgreSQL database (or in-memory store) is the source of truth.
+One VLM instance serves multiple browser sessions concurrently. Session state is isolated by `session_id`. No mutable per-user state is stored in process-global variables. The PostgreSQL database (or in-memory store) is the source of truth.
 
 ```
-Qwen Model (shared)
+VLM (shared)
      |
      +---- Session A (sess_001)
      |
@@ -348,6 +396,7 @@ Qwen Model (shared)
 - **No secrets in logs**: Logging omits screenshots, PII, full request bodies
 - **Action validation**: Unknown actions, shell commands, and JavaScript injection are rejected
 - **Session isolation**: Different users' states never overlap
+- **Placeholder validation**: Only `<EMAIL>`, `<PHONE>`, `<PERSON>`, etc. are allowed as values
 
 ## Placeholder Values
 
@@ -370,31 +419,43 @@ The client resolves placeholders using its local Secure User Vault. The server n
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MODEL_PATH` | `C:\Users\suraj\Qwen2.5-VL-3B` | Local model path |
+| `VLM_BACKEND` | `llamacpp` | `llamacpp` or `hf` |
+| `LLAMACPP_URL` | `http://127.0.0.1:8081` | llama-server API URL |
+| `GGUF_MODEL_PATH` | (set in .env) | Path to GGUF model file |
+| `MMProj_PATH` | (set in .env) | Path to mmproj file |
+| `MODEL_PATH` | `C:\Users\suraj\Qwen2-VL-2B` | HF model path (fallback) |
 | `HOST` | `127.0.0.1` | Server host |
 | `PORT` | `8000` | Server port |
 | `MAX_NEW_TOKENS` | `512` | Max VLM generation tokens |
+| `MAX_IMAGE_WIDTH` | `640` | Max image width for VLM |
+| `MAX_IMAGE_HEIGHT` | `640` | Max image height for VLM |
 | `MAX_RETRIES` | `3` | Max retry count before blocking |
 | `SESSION_TTL_SECONDS` | `3600` | Session TTL |
 | `LOG_LEVEL` | `INFO` | Logging level |
-| `STORAGE_BACKEND` | `memory` | `memory` or `pg` |
+| `STORAGE_BACKEND` | `pg` | `memory` or `pg` |
 | `DATABASE_URL` | (empty) | Supabase PostgreSQL connection string |
 | `DEBUG_TIMINGS` | `false` | Include timing data in responses |
 
 ## Troubleshooting
 
-### Model fails to load
+### llama-server fails to start
 
-- Ensure the model path `C:\Users\suraj\Qwen2.5-VL-3B` exists and contains model files
-- Verify CUDA is available: `python -c "import torch; print(torch.cuda.is_available())"`
-- Check GPU VRAM: the model requires ~3GB with 4-bit quantization
-- Ensure `bitsandbytes` is installed and working with CUDA
+- Ensure `llama-server.exe` exists at `C:\Users\suraj\.docker\bin\inference\`
+- Check that GGUF model files exist at `C:\Models\Qwen2.5-VL-3B-GGUF\`
+- Verify Vulkan is available: `vulkaninfo --summary`
+- Check GPU VRAM: model requires ~3GB
 
-### GPU out of memory
+### Backend can't connect to llama-server
 
-- Close other GPU-intensive applications
-- Reduce `MAX_NEW_TOKENS` in `.env`
-- Verify 4-bit quantization is enabled (NF4 config)
+- Ensure llama-server is running on port 8081
+- Check `LLAMACPP_URL` in `.env` matches llama-server's host/port
+- Try: `curl http://127.0.0.1:8081/v1/models`
+
+### HuggingFace backend issues
+
+- Set `VLM_BACKEND=hf` in `.env`
+- Verify CUDA: `python -c "import torch; print(torch.cuda.is_available())"`
+- Check GPU VRAM: requires ~3.5GB with NF4 quantization
 
 ### PostgreSQL connection fails
 
@@ -416,12 +477,18 @@ pytest backend/tests/ -v
 # Run all tests
 pytest backend/tests/ -v
 
-# Run specific test file
+# Run specific test files
 pytest backend/tests/test_session.py -v
 pytest backend/tests/test_workflow.py -v
 pytest backend/tests/test_validation.py -v
 pytest backend/tests/test_actions.py -v
 pytest backend/tests/test_api.py -v
+
+# Run full end-to-end test (starts servers + infer)
+python scripts/test_full.py
+
+# Run multi-turn loop test
+python scripts/test_loop.py
 ```
 
 ## Project Structure
@@ -446,11 +513,12 @@ backend/
 +-- validation/
 |   +-- browser_state_validator.py  # State transition validation
 +-- prompts/
-|   +-- prompt_builder.py      # Deterministic prompt assembly
+|   +-- prompt_builder.py      # Dynamic prompt assembly
 +-- vlm/
-|   +-- qwen_engine.py         # Qwen2.5-VL model wrapper
+|   +-- llamacpp_engine.py     # llama.cpp engine (primary)
+|   +-- qwen_engine.py         # HuggingFace engine (fallback)
 +-- actions/
-|   +-- action_validator.py    # Action safety validation
+|   +-- action_validator.py    # Action safety + fuzzy target matching
 +-- storage/
 |   +-- base.py                # Storage abstraction
 |   +-- memory_store.py        # In-memory store
@@ -466,4 +534,9 @@ backend/
     +-- test_validation.py     # State validation tests
     +-- test_actions.py        # Action validation tests
     +-- test_api.py            # API endpoint tests
+
+scripts/
++-- test_full.py               # Full end-to-end test
++-- test_loop.py               # Multi-turn loop test
++-- check_elements.py          # Debug element inspection
 ```
