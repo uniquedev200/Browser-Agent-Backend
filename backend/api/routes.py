@@ -202,6 +202,7 @@ async def infer(req: InferRequest) -> InferResponse:
         previous_actions=session.last_action_batch,
         validation_results=validation_results,
         execution_results=req.execution_results,
+        available_keys=req.available_keys,
     )
     timings["prompt_ms"] = (time.perf_counter() - t3) * 1000
 
@@ -256,7 +257,7 @@ async def infer(req: InferRequest) -> InferResponse:
 
     t5 = time.perf_counter()
     valid_actions, validation_errors = _action_validator.validate(
-        vlm_actions, req.browser_state
+        vlm_actions, req.browser_state, available_keys=req.available_keys
     )
     timings["validation_output_ms"] = (time.perf_counter() - t5) * 1000
 

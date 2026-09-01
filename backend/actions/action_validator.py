@@ -49,12 +49,14 @@ class ActionValidator:
         self,
         actions: list[dict[str, Any]],
         browser_state: BrowserState,
+        available_keys: dict[str, str] | None = None,
     ) -> tuple[list[dict[str, Any]], list[str]]:
         valid_actions: list[dict[str, Any]] = []
         errors: list[str] = []
 
         element_ids = {e.element_id for e in browser_state.elements}
         visible_ids = {e.element_id for e in browser_state.elements if e.enabled}
+        available_key_names = set(available_keys.keys()) if available_keys else set()
 
         for action in actions:
             target = action.get("target", "")
@@ -64,7 +66,7 @@ class ActionValidator:
                     action["target"] = matched
                     logger.info("Fuzzy matched target '%s' -> '%s'", target, matched)
 
-            action_errors = self._validate_single(action, element_ids, visible_ids)
+            action_errors = self._validate_single(action, element_ids, visible_ids, available_key_names)
             if action_errors:
                 errors.extend(action_errors)
             else:
@@ -77,6 +79,7 @@ class ActionValidator:
         action: dict[str, Any],
         element_ids: set[str],
         visible_ids: set[str],
+        available_key_names: set[str] | None = None,
     ) -> list[str]:
         errors: list[str] = []
         action_id = action.get("action_id", "unknown")
@@ -103,26 +106,32 @@ class ActionValidator:
 
         if action_type == "fill":
             value = action.get("value", "")
-            if value:
+            key = action.get("key", "")
+
+            if key:
+                if available_key_names and key not in available_key_names:
+                    errors.append(f"[{action_id}] Key '{key}' not in available_keys")
+            elif value:
                 for forbidden in ("javascript:", "eval(", "exec(", "import os", "subprocess"):
                     if forbidden in value.lower():
                         errors.append(f"[{action_id}] Suspicious content in fill value: '{forbidden}'")
                         break
-
                 if value not in VALID_PLACEHOLDERS:
                     errors.append(
                         f"[{action_id}] Fill value '{value}' is not a valid semantic placeholder. "
                         f"Allowed: {', '.join(sorted(VALID_PLACEHOLDERS))}"
                     )
-
-        if action_type == "press_key":
-            if not action.get("key"):
-                errors.append(f"[{action_id}] press_key requires a 'key' field")
+            else:
+                errors.append(f"[{action_id}] Fill action requires either 'key' or 'value'")
 
         if action_type == "scroll":
             direction = action.get("direction", "").lower()
             if direction and direction not in ("up", "down", "left", "right"):
                 errors.append(f"[{action_id}] Invalid scroll direction: '{direction}'")
+
+        if action_type == "press_key":
+            if not action.get("key"):
+                errors.append(f"[{action_id}] press_key requires a 'key' field")
 
         forbidden_patterns = [
             r"javascript\s*:",

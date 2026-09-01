@@ -31,6 +31,10 @@ class InferRequest(BaseModel):
         default_factory=list,
         description="Execution results from the previous action batch",
     )
+    available_keys: dict[str, str] = Field(
+        default_factory=dict,
+        description="Encrypted key-value pairs from client vault. Keys like FirstName, LastName, Email, Phone map to encrypted values. Server returns keys in actions, client decrypts locally.",
+    )
 
 
 class InferResponse(BaseModel):
