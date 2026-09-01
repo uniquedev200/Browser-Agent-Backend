@@ -37,7 +37,7 @@ class PromptBuilder:
         key_names = list(available_keys.keys()) if available_keys else []
         has_keys = len(key_names) > 0
 
-        example_actions = self._build_example(pending_visible, has_keys, key_names)
+        example_actions = self._build_example(pending_visible, has_keys, key_names, len(pending_offscreen) > 0)
 
         parts: list[str] = []
         parts.append(
@@ -163,7 +163,8 @@ class PromptBuilder:
         return "\n".join(parts)
 
     def _build_example(
-        self, elements: list[str], has_keys: bool, key_names: list[str]
+        self, elements: list[str], has_keys: bool, key_names: list[str],
+        has_offscreen: bool = False,
     ) -> str:
         textboxes = []
         checkbox = None
@@ -182,6 +183,11 @@ class PromptBuilder:
 
         actions = []
         i = 1
+
+        if has_offscreen:
+            actions.append({"action_id": f"a{i}", "type": "scroll", "direction": "down"})
+            i += 1
+
         if has_keys:
             key_map = {}
             keywords = {
