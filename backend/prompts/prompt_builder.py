@@ -41,19 +41,23 @@ class PromptBuilder:
 
         parts: list[str] = []
         parts.append(
-            "You are a browser automation agent. Return ONLY compact JSON.\n\n"
+            "Return ONLY compact JSON.\n\n"
             "ACTION TYPES:\n"
             "- \"fill\" for empty textboxes (use \"key\" field to reference user data)\n"
-            "- \"check\" for unchecked checkboxes (no value needed)\n"
-            "- \"click\" for buttons (no value needed)\n"
-            "- \"scroll\" to reveal off-screen elements (use \"direction\":\"down\")\n\n"
+            "- \"check\" for unchecked checkboxes\n"
+            "- \"click\" for buttons\n"
+            "- \"scroll\" with \"direction\":\"down\" to reveal off-screen elements\n\n"
             "RULES:\n"
-            "- The \"target\" field MUST be the element_id from the list below\n"
             "- For fill actions, use the \"key\" field with the matching key from Available Keys\n"
-            "- If there are off-screen elements that need action, include a scroll action FIRST\n"
             "- Only return {\"status\":\"done\"} when ALL elements are filled/checked\n"
             "- Return ALL actions in a SINGLE array\n"
         )
+
+        if pending_offscreen:
+            parts.append(
+                "IMPORTANT: There are off-screen elements. You MUST include "
+                "{\"type\":\"scroll\",\"direction\":\"down\"} as the FIRST action.\n"
+            )
 
         if task:
             parts.append(f"Task: {task}")
@@ -68,11 +72,11 @@ class PromptBuilder:
             parts.append(f"\nAvailable Keys: {', '.join(key_names)}")
 
         if pending_visible:
-            parts.append("\nVisible elements (need action):")
+            parts.append("\nVisible elements:")
             parts.extend(pending_visible)
 
         if pending_offscreen:
-            parts.append("\nOff-screen elements (need scroll + action):")
+            parts.append("\nOff-screen elements:")
             parts.extend(pending_offscreen)
 
         if completed_visible:
@@ -80,7 +84,7 @@ class PromptBuilder:
             parts.extend(completed_visible)
 
         if example_actions:
-            parts.append(f"\nExample output:")
+            parts.append(f"\nExample:")
             parts.append(example_actions)
 
         parts.append("")

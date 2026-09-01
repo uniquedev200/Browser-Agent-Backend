@@ -261,6 +261,20 @@ async def infer(req: InferRequest) -> InferResponse:
     )
     timings["validation_output_ms"] = (time.perf_counter() - t5) * 1000
 
+    has_scroll = any(a.get("type") == "scroll" for a in valid_actions)
+    if not has_scroll:
+        viewport = req.browser_state.page.viewport
+        scroll_pos = req.browser_state.page.scroll
+        for e in req.browser_state.elements:
+            if e.bbox and len(e.bbox) >= 4:
+                el_y = e.bbox[1] - scroll_pos.y
+                el_bottom = el_y + e.bbox[3]
+                if el_bottom > viewport.height or el_y < 0:
+                    if e.role in ("textbox", "button", "checkbox", "combobox"):
+                        valid_actions.insert(0, {"action_id": "a0", "type": "scroll", "direction": "down"})
+                        logger.info("Auto-inserted scroll action for off-screen elements")
+                        break
+
     timings["total_ms"] = (time.perf_counter() - total_start) * 1000
 
     if validation_errors:
