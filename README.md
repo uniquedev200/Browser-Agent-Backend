@@ -179,79 +179,133 @@ Response: `{"status": "ok"}`
 | GPU backend | Vulkan | CUDA |
 | Dependencies | llama-server only | torch + transformers + bitsandbytes |
 
-## API Endpoints
+## API Reference
 
-### Health Check
+**Base URL:** `http://127.0.0.1:8000`
 
-```http
-GET /health
+All endpoints accept and return JSON. Content-Type: `application/json`.
+
+---
+
+### `GET /health`
+
+Check if the server is running.
+
+**Response:**
+```json
+{"status": "ok"}
 ```
 
-### Create Session
+---
 
-```http
-POST /api/v1/session
-Content-Type: application/json
+### `POST /api/v1/session`
 
+Create a new session or resume an existing one.
+
+**Request:**
+```json
 {
-  "session_id": "sess_abc123",
-  "task": "Complete the internship application"
+  "session_id": "sess_001",
+  "task": "Fill the internship application form"
 }
 ```
 
-### Get Session
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `session_id` | string | yes | Unique ID for this browser session |
+| `task` | string | no | What the agent should do |
 
-```http
-GET /api/v1/session/{session_id}
-```
-
-### Delete Session
-
-```http
-DELETE /api/v1/session/{session_id}
-```
-
-### Infer (Main Agent Endpoint)
-
-```http
-POST /api/v1/infer
-Content-Type: application/json
-
+**Response:**
+```json
 {
   "session_id": "sess_001",
-  "task": "Complete the registration form",
+  "status": "RUNNING",
+  "created_at": "2026-09-01T12:00:00+00:00"
+}
+```
+
+---
+
+### `GET /api/v1/session/{session_id}`
+
+Get current session state.
+
+**Response:**
+```json
+{
+  "session_id": "sess_001",
+  "task": "Fill the internship application form",
+  "status": "RUNNING",
+  "phase": "fill",
+  "step_index": 2,
+  "retry_count": 0,
+  "created_at": "2026-09-01T12:00:00+00:00",
+  "updated_at": "2026-09-01T12:00:15+00:00"
+}
+```
+
+---
+
+### `DELETE /api/v1/session/{session_id}`
+
+Delete a session and all its data.
+
+**Response:**
+```json
+{"status": "deleted", "session_id": "sess_001"}
+```
+
+---
+
+### `POST /api/v1/infer` (Main Endpoint)
+
+Send browser state + screenshot, get back actions to execute.
+
+**Full Request Example:**
+```json
+{
+  "session_id": "sess_001",
+  "task": "Fill the internship application form",
   "browser_state": {
     "page": {
-      "title": "Registration",
-      "url": "https://example.com/register",
+      "title": "Software Engineer Internship",
+      "url": "https://example.com/apply",
       "viewport": {"width": 1440, "height": 900},
       "scroll": {"x": 0, "y": 0}
     },
     "elements": [
       {
-        "element_id": "name_1",
+        "element_id": "name",
         "role": "textbox",
         "label": "Full Name",
         "value": "",
-        "bbox": [100, 150, 300, 40],
+        "bbox": [70, 184, 760, 45],
         "visible": true,
         "enabled": true
       },
       {
-        "element_id": "email_1",
+        "element_id": "email",
         "role": "textbox",
-        "type": "email",
-        "label": "Email",
+        "label": "Email Address",
         "value": "",
-        "bbox": [100, 220, 300, 40],
+        "bbox": [70, 268, 760, 45],
         "visible": true,
         "enabled": true
       },
       {
-        "element_id": "submit_1",
+        "element_id": "terms",
+        "role": "checkbox",
+        "label": "I agree to the terms",
+        "checked": false,
+        "bbox": [70, 520, 18, 18],
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "element_id": "submit",
         "role": "button",
         "text": "Submit",
-        "bbox": [100, 300, 120, 40],
+        "bbox": [70, 592, 120, 44],
         "visible": true,
         "enabled": true
       }
@@ -259,108 +313,226 @@ Content-Type: application/json
   },
   "screenshot": {
     "mime_type": "image/png",
-    "data": "<BASE64_SANITIZED_IMAGE>"
+    "data": "iVBORw0KGgoAAAANS..."
+  },
+  "available_keys": {
+    "FullName": "enc_abc123_def456",
+    "Email": "enc_ghi789_jkl012",
+    "Phone": "enc_mno345_pqr678",
+    "Address": "enc_stu901_vwx234"
   },
   "execution_results": []
 }
 ```
 
-Response:
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `session_id` | string | yes | Same session_id from create |
+| `task` | string | no | Task description (sent to VLM) |
+| `browser_state` | object | yes | Current page state with ALL elements |
+| `screenshot` | object | no | Base64-encoded sanitized screenshot |
+| `available_keys` | object | no | Encrypted key-value pairs from client vault |
+| `execution_results` | array | no | Results from previous action batch |
 
+**Important about `browser_state`:**
+- Send ALL elements on the page, not just visible ones
+- Include `viewport` width/height and `scroll` x/y
+- Backend uses these to detect which elements are visible vs off-screen
+- `bbox` format: `[x, y, width, height]`
+
+**Important about `available_keys`:**
+- Keys are names from your local vault (e.g., "FullName", "Email", "Phone")
+- Values are encrypted - server never sees actual PII
+- Server returns `key` field in fill actions, you decrypt locally
+
+**Response (Turn 1 - visible fields):**
 ```json
 {
   "session_id": "sess_001",
   "status": "continue",
   "actions": [
-    {
-      "action_id": "a1",
-      "type": "fill",
-      "target": "name_1",
-      "value": "<PERSON>"
-    },
-    {
-      "action_id": "a2",
-      "type": "fill",
-      "target": "email_1",
-      "value": "<EMAIL>"
-    },
-    {
-      "action_id": "a3",
-      "type": "click",
-      "target": "submit_1"
-    }
+    {"action_id": "a0", "type": "scroll", "direction": "down"},
+    {"action_id": "a1", "type": "fill", "target": "name", "key": "FullName"},
+    {"action_id": "a2", "type": "fill", "target": "email", "key": "Email"}
   ],
   "checkpoint": true,
-  "reason": "All visible form fields can be filled and submitted",
-  "timings": {
-    "vlm_ms": 3200.0,
-    "total_ms": 3500.0
-  }
+  "reason": "Filling visible form fields"
 }
 ```
 
+**Response (Turn 2 - after scrolling):**
+```json
+{
+  "session_id": "sess_001",
+  "status": "continue",
+  "actions": [
+    {"action_id": "a1", "type": "check", "target": "terms"},
+    {"action_id": "a2", "type": "click", "target": "submit"}
+  ],
+  "checkpoint": true,
+  "reason": "Checking terms and submitting"
+}
+```
+
+**Response (Form submitted):**
+```json
+{
+  "session_id": "sess_001",
+  "status": "done",
+  "actions": [],
+  "checkpoint": true,
+  "reason": "Page navigated: https://example.com/apply -> https://example.com/thank-you"
+}
+```
+
+| Response Field | Type | Description |
+|----------------|------|-------------|
+| `status` | string | `"continue"` = send next batch, `"done"` = task complete, `"blocked"` = error |
+| `actions` | array | List of actions to execute locally |
+| `checkpoint` | bool | `true` = capture new state after executing |
+| `reason` | string | VLM's reasoning |
+| `timings` | object | Only when `DEBUG_TIMINGS=true` |
+
+---
+
+## Action Types
+
+### `fill` - Fill a textbox
+```json
+{"action_id": "a1", "type": "fill", "target": "name", "key": "FullName"}
+```
+- `target`: element_id of the textbox
+- `key`: key from `available_keys` to use (you decrypt locally)
+
+### `check` - Check a checkbox
+```json
+{"action_id": "a2", "type": "check", "target": "terms"}
+```
+
+### `click` - Click a button
+```json
+{"action_id": "a3", "type": "click", "target": "submit"}
+```
+
+### `scroll` - Scroll to reveal off-screen elements
+```json
+{"action_id": "a0", "type": "scroll", "direction": "down"}
+```
+- `direction`: `"down"`, `"up"`, `"left"`, `"right"`
+
+### `done` - Task completed
+```json
+{"action_id": "a1", "type": "done"}
+```
+
+---
+
+## Frontend Integration Flow
+
+```
+1. Create session
+   POST /api/v1/session {session_id, task}
+
+2. Capture browser state + screenshot
+   - Get ALL elements (visible + off-screen)
+   - Get viewport size and scroll position
+   - Sanitize screenshot (strip PII from images)
+
+3. Send to backend
+   POST /api/v1/infer {session_id, browser_state, screenshot, available_keys}
+
+4. Execute actions locally
+   - For fill: look up key in local vault, decrypt, fill field
+   - For check: toggle checkbox
+   - For click: click button
+   - For scroll: scroll page
+
+5. Capture new state (if checkpoint=true)
+
+6. Send execution results with next request
+   POST /api/v1/infer {session_id, browser_state, screenshot, execution_results: [{action_id, status}]}
+
+7. Repeat until status="done"
+```
+
+**Example execution_results:**
+```json
+{
+  "execution_results": [
+    {"action_id": "a0", "status": "ok"},
+    {"action_id": "a1", "status": "ok"},
+    {"action_id": "a2", "status": "ok"}
+  ]
+}
+```
+
+---
+
+## Loop Termination
+
+The backend automatically terminates when:
+
+| Condition | Example |
+|-----------|---------|
+| **Success message in DOM** | Page contains "submitted", "thank you", "success" |
+| **Page navigation** | URL changed after click action |
+| **All fields filled** | Every textbox has value, every checkbox is checked |
+| **Loop detected** | Same browser state sent 3+ times |
+| **Max retries** | 3+ failed validation attempts |
+
+When terminated, response has `"status": "done"` and empty `actions` array.
+
+---
+
 ## Browser State Schema
 
-```python
-class BrowserState:
-    page: PageMetadata
-    elements: list[ElementState]
+```typescript
+interface BrowserState {
+  page: {
+    title: string;          // Page title
+    url: string;            // Full URL
+    viewport: { width: number; height: number };
+    scroll: { x: number; y: number };
+  };
+  elements: ElementState[];
+}
 
-class PageMetadata:
-    title: str
-    url: str
-    domain: str
-    viewport: Viewport      # {width, height}
-    scroll: ScrollPosition  # {x, y}
-
-class ElementState:
-    element_id: str          # required
-    role: str                # textbox, button, combobox, checkbox
-    type: str                # email, text, tel, etc.
-    tag: str                 # optional
-    text: str                # visible text
-    label: str               # label
-    placeholder: str
-    value: str               # may contain <EMAIL>, <PHONE>, etc.
-    bbox: list[int]          # [x, y, width, height]
-    visible: bool
-    enabled: bool
-    focused: bool
-    checked: bool | None
-    expanded: bool | None
-    selected: bool | None
-    disabled: bool | None
+interface ElementState {
+  element_id: string;       // REQUIRED - unique identifier
+  role: string;             // "textbox" | "button" | "checkbox" | "combobox"
+  type?: string;            // "email" | "text" | "tel" | "password" | etc.
+  tag?: string;             // "input" | "button" | "select" | etc.
+  text?: string;            // Visible text content
+  label?: string;           // Label text
+  placeholder?: string;     // Placeholder text
+  value?: string;           // Current value (empty = needs fill)
+  bbox: number[];           // [x, y, width, height] - REQUIRED
+  visible: boolean;         // REQUIRED
+  enabled: boolean;         // REQUIRED
+  checked?: boolean;        // For checkboxes
+  selected?: boolean;       // For dropdowns
+}
 ```
 
-## Action Schema
-
-```python
-class Action:
-    action_id: str           # required, unique
-    type: str                # required, one of supported types
-    target: str | None       # element_id to act on
-    value: str | None        # fill value, placeholder
-    key: str | None          # for press_key
-    direction: str | None    # for scroll: up/down/left/right
-    amount: int | None       # for scroll: pixels
-    selector: str | None     # optional CSS selector
-```
-
-Supported action types: `click`, `fill`, `select`, `check`, `uncheck`, `scroll`, `wait`, `press_key`, `upload`, `done`
+**Critical:** Always send ALL elements, even off-screen ones. Backend uses `bbox` + `viewport` + `scroll` to determine visibility.
 
 ## Session Lifecycle
 
-1. Client sends first request with a `session_id`
-2. Server creates a new session automatically
-3. Server validates previous execution (if any)
-4. Server updates workflow state
-5. Server builds prompt from session state + browser state
-6. VLM generates structured action JSON
-7. Action Validator filters invalid actions
-8. Server returns valid actions to client
-9. Client executes actions locally, captures new state
-10. Client sends next request with same `session_id`
-11. Repeat until status is `done`
+1. Client creates session with `session_id` + `task`
+2. Client sends browser state + screenshot + available_keys
+3. Backend splits elements by visibility (viewport + scroll)
+4. Backend builds prompt with visible/off-screen sections
+5. VLM generates actions (scroll + fill + check + click)
+6. Backend validates actions against available_keys
+7. Backend returns actions to client
+8. Client executes actions locally:
+   - For `fill`: decrypt key from local vault, fill field
+   - For `check`: toggle checkbox
+   - For `click`: click button
+   - For `scroll`: scroll page
+9. Client captures new state, sends next request
+10. Backend checks for completion (page nav, success message, all filled)
+11. Repeat until `status="done"`
 
 ## Smart Prompt System
 
@@ -389,31 +561,14 @@ VLM (shared)
 
 ## Security & Privacy
 
-- **No raw PII**: The server only sees `<EMAIL>`, `<PHONE>`, `<PERSON>`, etc.
-- **Sanitized screenshots only**: Client strips PII from images before sending
-- **No reverse engineering**: Server never attempts to resolve placeholders to real values
-- **Prompt injection defense**: System prompt explicitly treats webpage text as data, not instructions
-- **No secrets in logs**: Logging omits screenshots, PII, full request bodies
+- **Key-based fills**: Server only sees encrypted keys (e.g., "FullName"), never actual values
+- **Local vault**: Client decrypts keys locally - PII never leaves the device
+- **Sanitized screenshots**: Client strips PII from images before sending
+- **No reverse engineering**: Server never attempts to resolve keys to actual values
+- **Prompt injection defense**: System prompt treats webpage text as data, not instructions
+- **No secrets in logs**: Logging omits screenshots, keys, full request bodies
 - **Action validation**: Unknown actions, shell commands, and JavaScript injection are rejected
 - **Session isolation**: Different users' states never overlap
-- **Placeholder validation**: Only `<EMAIL>`, `<PHONE>`, `<PERSON>`, etc. are allowed as values
-
-## Placeholder Values
-
-The server works with semantic placeholders only:
-
-| Placeholder | Meaning |
-|-------------|---------|
-| `<EMAIL>` | User's email address |
-| `<PHONE>` | User's phone number |
-| `<PASSWORD>` | User's password |
-| `<PERSON>` | User's name |
-| `<CREDIT_CARD>` | Credit card number |
-| `<ACCOUNT_NUMBER>` | Account number |
-| `<ADDRESS>` | Physical address |
-| `<OTP>` | One-time password |
-
-The client resolves placeholders using its local Secure User Vault. The server never sees actual values.
 
 ## Configuration
 
