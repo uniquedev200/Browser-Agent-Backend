@@ -22,7 +22,7 @@ class PromptBuilder:
         previous_actions: list[dict[str, Any]] | None = None,
         validation_results: list[dict[str, Any]] | None = None,
         execution_results: list[dict[str, Any]] | None = None,
-        available_keys: dict[str, str] | None = None,
+        available_keys: list[str] | None = None,
     ) -> str:
         visible_elements, offscreen_elements = self._split_by_visibility(browser_state)
         pending_visible, completed_visible = self._categorize_elements(visible_elements)
@@ -34,7 +34,7 @@ class PromptBuilder:
         if all_done:
             return self._build_done_response(task, completed_visible)
 
-        key_names = list(available_keys.keys()) if available_keys else []
+        key_names = available_keys if available_keys else []
         has_keys = len(key_names) > 0
 
         example_actions = self._build_example(pending_visible, has_keys, key_names, len(pending_offscreen) > 0)

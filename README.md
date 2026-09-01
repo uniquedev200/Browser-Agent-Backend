@@ -315,12 +315,7 @@ Send browser state + screenshot, get back actions to execute.
     "mime_type": "image/png",
     "data": "iVBORw0KGgoAAAANS..."
   },
-  "available_keys": {
-    "FullName": "enc_abc123_def456",
-    "Email": "enc_ghi789_jkl012",
-    "Phone": "enc_mno345_pqr678",
-    "Address": "enc_stu901_vwx234"
-  },
+  "available_keys": ["FullName", "Email", "Phone", "Address"],
   "execution_results": []
 }
 ```
@@ -341,9 +336,9 @@ Send browser state + screenshot, get back actions to execute.
 - `bbox` format: `[x, y, width, height]`
 
 **Important about `available_keys`:**
-- Keys are names from your local vault (e.g., "FullName", "Email", "Phone")
-- Values are encrypted - server never sees actual PII
-- Server returns `key` field in fill actions, you decrypt locally
+- Send only the **key names** from your local vault (e.g., "FullName", "Email", "Phone")
+- Never send encrypted values to the server
+- Server returns `key` field in fill actions, you decrypt locally using your vault
 
 **Response (Turn 1 - visible fields):**
 ```json

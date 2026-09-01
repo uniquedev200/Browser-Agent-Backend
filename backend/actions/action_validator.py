@@ -49,14 +49,14 @@ class ActionValidator:
         self,
         actions: list[dict[str, Any]],
         browser_state: BrowserState,
-        available_keys: dict[str, str] | None = None,
+        available_keys: list[str] | None = None,
     ) -> tuple[list[dict[str, Any]], list[str]]:
         valid_actions: list[dict[str, Any]] = []
         errors: list[str] = []
 
         element_ids = {e.element_id for e in browser_state.elements}
         visible_ids = {e.element_id for e in browser_state.elements if e.enabled}
-        available_key_names = set(available_keys.keys()) if available_keys else set()
+        available_key_names = set(available_keys) if available_keys else set()
 
         for action in actions:
             target = action.get("target", "")
