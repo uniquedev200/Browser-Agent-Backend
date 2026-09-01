@@ -281,7 +281,10 @@ async def infer(req: InferRequest) -> InferResponse:
     timings["validation_output_ms"] = (time.perf_counter() - t5) * 1000
 
     has_scroll = any(a.get("type") == "scroll" for a in valid_actions)
-    if not has_scroll:
+    prev_was_scroll = session.last_action_batch and any(
+        a.get("type") == "scroll" for a in session.last_action_batch
+    )
+    if not has_scroll and not prev_was_scroll:
         viewport = req.browser_state.page.viewport
         scroll_pos = req.browser_state.page.scroll
         for e in req.browser_state.elements:

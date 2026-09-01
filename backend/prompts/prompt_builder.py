@@ -28,7 +28,6 @@ class PromptBuilder:
         pending_visible, completed_visible = self._categorize_elements(visible_elements)
         pending_offscreen, _ = self._categorize_elements(offscreen_elements)
 
-        needs_scroll = len(pending_offscreen) > 0 and len(pending_visible) == 0
         all_done = len(pending_visible) == 0 and len(pending_offscreen) == 0
 
         if all_done:
@@ -37,7 +36,15 @@ class PromptBuilder:
         key_names = available_keys if available_keys else []
         has_keys = len(key_names) > 0
 
-        example_actions = self._build_example(pending_visible, has_keys, key_names, len(pending_offscreen) > 0)
+        # Check if previous action was scroll - don't ask for scroll again
+        prev_was_scroll = False
+        if previous_actions:
+            prev_was_scroll = any(a.get("type") == "scroll" for a in previous_actions)
+
+        # Only suggest scroll if there are off-screen elements AND previous wasn't scroll
+        needs_scroll_suggestion = len(pending_offscreen) > 0 and not prev_was_scroll
+
+        example_actions = self._build_example(pending_visible, has_keys, key_names, needs_scroll_suggestion)
 
         parts: list[str] = []
         parts.append(
@@ -53,7 +60,7 @@ class PromptBuilder:
             "- Return ALL actions in a SINGLE array\n"
         )
 
-        if pending_offscreen:
+        if needs_scroll_suggestion:
             parts.append(
                 "IMPORTANT: There are off-screen elements. You MUST include "
                 "{\"type\":\"scroll\",\"direction\":\"down\"} as the FIRST action.\n"
