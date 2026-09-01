@@ -169,6 +169,25 @@ async def infer(req: InferRequest) -> InferResponse:
         validation_results=validation_results,
     )
 
+    if session.last_action_batch:
+        completed, completion_reason = _workflow_manager.check_completion(
+            session=session,
+            current_state=req.browser_state,
+            previous_state=None,
+            action_batch=session.last_action_batch,
+        )
+        if completed:
+            _workflow_manager.mark_completed(session)
+            await _session_manager.save(session)
+            return InferResponse(
+                session_id=req.session_id,
+                status="done",
+                actions=[],
+                checkpoint=True,
+                reason=completion_reason or "Task completed",
+                timings=timings if _timings_enabled else None,
+            )
+
     if _workflow_manager.detect_loop(session):
         _workflow_manager.mark_blocked(session, "Loop detected: repeated browser state")
         await _session_manager.save(session)
